@@ -1,3 +1,4 @@
-(function() {
-    function base() {
+window.UDT = {};
+window.UDT.raw = {
+    tone : function(freq, dur, amp) {
         
