@@ -1,14 +1,99 @@
 (function() {
-    window.UDT = {};
-    var aud = new (window.AudioContext || window.webkitAudioContext);
+    var promises = {
+        transmit : {
+            s : [],
+            f : [],
+            v : 0
+        },
+        receive : {
+            s : [],
+            f : [],
+            v : 0
+        }
+    };
+    var newUDT = {
+        getTransmitter : function() {
+            return {
+                then : function(s, f) {
+                    switch (promises.transmit.v) {
+                        case 0:
+                            if (s) {
+                                promises.transmit.s.push(s);
+                            }
+                            if (f) {
+                                promises.transmit.f.push(f);
+                            }
+                            break;
+                        case 1:
+                            s(promises.transmit.lib);
+                            break;
+                        case 2:
+                            f();
+                            break;
+                    }
+                }
+            };
+        },
+        getReceiver : function() {
+            return {
+                then : function(s, f) {
+                    switch (promises.receive.v) {
+                        case 0:
+                            if (s) {
+                                promises.receive.s.push(s);
+                            }
+                            if (f) {
+                                promises.receive.f.push(f);
+                            }
+                            break;
+                        case 1:
+                            try {
+                                s(promises.receive.lib);
+                            } catch (e);
+                            break;
+                        case 2:
+                            try {
+                                f();
+                            } catch (e);
+                            break;
+                    }
+                }
+            };
+        }
+    }
+    function postLib(name, ok) {
+        if (promises[name]) {
+            promises[name].v = ok ? 1 : 2;
+            promises[name][ok ? "s" : "f"].forEach(function(v) {
+                try {
+                    if (ok) {
+                        v(promises[name].lib);
+                    } else {
+                        v();
+                    }
+                } catch (e);
+            });
+        }
+    }
+    var aud = window.AudioContext || window.webkitAudioContext;
+    if (!aud) {
+        console.log("AudioContext not supported");
+        postLib("transmit", false);
+        postLib("receive", false);
+        return;
+    }
 // Transmission
     (function() {
-        function tone(freq, dur, amp, c) {
-            c = c || function() {};
-            var o = aud.createOscilator();
-            var g = aud.createGain();
+        var transmitAud = new aud();
+        var o,g;
+        (function() {
+            o = aud.createOscilator();
+            g = aud.createGain();
             o.connect(g);
             g.connect(aud.destination);
+        })();
+        function tone(freq, dur, amp, c) {
+            c = c || function() {};
             g.gain.value = amp / 100;
             o.frequency.value = freq;
             o.type = 0;
@@ -50,7 +135,7 @@
             var i = 0;
             function a() {
                 if (isTransmiting) {
-                    tone(writeData[i], toneDur, v, (i == writeData.length) ? (isTransmiting = false, function() {}) : a);
+                    tone(freqMin + (writeData[i] * (freqMax - freqMin) / (2 ** (bins + 1))), toneDur, v, (i == writeData.length) ? (isTransmiting = false, function() {}) : a);
                     i++;
                 }
             }
@@ -59,12 +144,31 @@
         function emergencyTransmitFree() {
             isTransmiting = false;
         }
-        window.UDT.transmit = transmit;
-        window.UDT.emergencyTransmitFree = emergencyTransmitFree;
+        promises.transmit.lib = {
+            transmit : transmit,
+            emergencyTransmitFree : emergencyTransmitFree
+        }
+        postLib("transmit", true);
     })();
 // Receiver
     (function() {
-        var any = aud.createAnalyser();
-        any.fftsize = 2048; // default
-        any.
-        
+        var mediaMode = false;
+        var gum = navigator.mediaDevices.getUserMedia || (mediaMode = true, navigator.getUserMedia) || navigator.webkitGetUserMedia;
+        if (!gum) {
+            postLib("receive", false);
+            return;
+        } else if (mediaMode) {
+            let og = gum;
+            gum = function(op) {
+                return {
+                    then : function(s, f) {
+                        og(op, s, f);
+                    }
+                };
+            }
+        }
+        gum({audio : true, video : false}).then(function(stream) {
+            
+        }, function() {
+            postLib("receive", false);
+        });
