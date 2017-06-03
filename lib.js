@@ -104,7 +104,7 @@
             }, dur);
         }
         var isTransmiting = false;
-        function transmit(data, bins, freqMin, freqMax, toneDur, v) { // data is a normal string, bin is in bits, LSB
+        function transmit(data, bins, binSize, freqBase, toneDur, v) { // data is a normal string, bin is in bits, LSB, binSize and freqBase multiples of 20, toneDur should be a multiple of ~0.1 seconds
             isTransmiting = true;
             v = v || 1;
             var writeData = [];
@@ -135,7 +135,7 @@
             var i = 0;
             function a() {
                 if (isTransmiting) {
-                    tone(freqMin + (writeData[i] * (freqMax - freqMin) / (2 ** (bins + 1))), toneDur, v, (i == writeData.length) ? (isTransmiting = false, function() {}) : a);
+                    tone(freqBase + (writeData[i] * binSize), toneDur, v, (i == writeData.length) ? (isTransmiting = false, function() {}) : a);
                     i++;
                 }
             }
@@ -167,8 +167,24 @@
                 };
             }
         }
+        var listeners = {};
         gum({audio : true, video : false}).then(function(stream) {
-            
+            var receiveAud = new aud();
+            var s = receiveAud.createMediaStreamSource(stream);
+            var any = receiveAud.createAnalyser();
+            any.fftsize = receiveAud.sampleRate / 20;
+            s.connect(any);
+            var data = new Uint8Array(any.frequencyBinSize);
+            function a() {
+                if (listeners.length > 0) {
+                    any.getByteFrequencyData(data);
+                    listeners.forEach(function(v) {
+                        v.c()
+                    });
+                }
+            }
+            setInterval(a, 50);
+            a();
         }, function() {
             postLib("receive", false);
         });
