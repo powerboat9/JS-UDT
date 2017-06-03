@@ -151,7 +151,7 @@
         postLib("transmit", true);
     })();
 // Receiver
-    (function() {
+    (function() { // for best preformance, listen on frequencies with a multiple of 20
         var mediaMode = false;
         var gum = navigator.mediaDevices.getUserMedia || (mediaMode = true, navigator.getUserMedia) || navigator.webkitGetUserMedia;
         if (!gum) {
@@ -179,7 +179,7 @@
                 if (listeners.length > 0) {
                     any.getByteFrequencyData(data);
                     listeners.forEach(function(v) {
-                        v.c()
+                        if 
                     });
                 }
             }
