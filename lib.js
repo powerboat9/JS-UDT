@@ -1,4 +1,4 @@
-(function() {
+(function(freqInterval, baud) {
     var promises = {
         transmit : {
             s : [],
@@ -104,18 +104,22 @@
             }, dur);
         }
         var isTransmiting = false;
-        function transmit(data, bins, binSize, freqBase, toneDur, v) { // data is a normal string, bin is in bits, LSB, binSize and freqBase multiples of 20, toneDur should be a multiple of ~0.1 seconds
+        function transmit(data, bins, binSize, freqBase, vol) { // data is a normal string encoded in LSB, bin is a power of 2, binSize and freqBase multiples of 20
+            bins = Math.log2(bins) - 1;
+            if ((bins % 1) != 0) {
+                return [false, "bins: not a power of 2"];
+            }
             isTransmiting = true;
-            v = v || 1;
+            vol = vol || 1;
             var writeData = [];
             do {
                 var base = 1;
                 var writePos = 0;
                 var writeN = 0;
                 for (let i = 0; i < data.length; i++) {
-                    var v = data.charCodeAt(i);
+                    var char = data.charCodeAt(i);
                     while (true) {
-                        if (v & base) {
+                        if (char & base) {
                             writeN += (writePos ** 2);
                         }
                         writePos++;
@@ -135,11 +139,12 @@
             var i = 0;
             function a() {
                 if (isTransmiting) {
-                    tone(freqBase + (writeData[i] * binSize), toneDur, v, (i == writeData.length) ? (isTransmiting = false, function() {}) : a);
+                    tone(freqBase + (writeData[i] * binSize), 1 / baud, vol, (i == writeData.length) ? (isTransmiting = false, function() {}) : a);
                     i++;
                 }
             }
             a();
+            return [true, null];
         }
         function emergencyTransmitFree() {
             isTransmiting = false;
@@ -167,7 +172,15 @@
                 };
             }
         }
-        var listeners = {};
+        var listeners = [];
+        function addListener(freqBase, bins, binSize, sensitivity) {
+            listeners.push({
+                freqBase : freqBase,
+                bins : bins,
+                binSize : binSize,
+                sensitivity : sensitivity
+            });
+        }
         gum({audio : true, video : false}).then(function(stream) {
             var receiveAud = new aud();
             var s = receiveAud.createMediaStreamSource(stream);
@@ -179,12 +192,18 @@
                 if (listeners.length > 0) {
                     any.getByteFrequencyData(data);
                     listeners.forEach(function(v) {
-                        if 
+                        var n = 0;
+                        var base = 1;
+                        for (var i = 0; i < v.bins; i++) {
+                            if (
+                            base << 1;
+                        }
                     });
                 }
             }
-            setInterval(a, 50);
-            a();
+            setInterval(a, 500 / baud);
         }, function() {
             postLib("receive", false);
         });
+    })();
+})(20, 10);
