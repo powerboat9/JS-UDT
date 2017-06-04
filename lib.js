@@ -156,7 +156,7 @@
         postLib("transmit", true);
     })();
 // Receiver
-    (function() { // for best preformance, listen on frequencies with a multiple of 20
+    (function() { // for best preformance, listen on frequencies with a multiple of freqInterval
         var mediaMode = false;
         var gum = navigator.mediaDevices.getUserMedia || (mediaMode = true, navigator.getUserMedia) || navigator.webkitGetUserMedia;
         if (!gum) {
@@ -185,7 +185,7 @@
             var receiveAud = new aud();
             var s = receiveAud.createMediaStreamSource(stream);
             var any = receiveAud.createAnalyser();
-            any.fftsize = receiveAud.sampleRate / 20;
+            any.fftsize = receiveAud.sampleRate / freqInterval;
             s.connect(any);
             var data = new Uint8Array(any.frequencyBinSize);
             function a() {
