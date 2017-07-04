@@ -195,7 +195,7 @@
                         var n = 0;
                         var base = 1;
                         for (var i = 0; i < v.bins; i++) {
-                            if (
+                            var v = 
                             base << 1;
                         }
                     });
